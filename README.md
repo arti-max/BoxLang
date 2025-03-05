@@ -72,7 +72,7 @@ open function_name[arg1, arg2]
 box function[] (
     #loop_label    ; _label в конце обязателен
     ; код
-    loop[#loop_label, counter]  ; переход на локальную метку
+    loop[#loop_label, variable]  ; переход на локальную метку, если variable > 0
 )
 ```
 

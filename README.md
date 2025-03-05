@@ -95,24 +95,13 @@ math->function[args]      ; Вызов функции из библиотеки
 ### io.asm
 Библиотека для ввода/вывода
 - `print[str]` - вывод строки
-- `println[str]` - вывод строки с переводом строки
 - `scanstr[buffer]` - чтение строки в буфер
-- `putchar[char]` - вывод одного символа
-- `getchar[]` - чтение одного символа
 
 ### datautils.asm
 Утилиты для работы с данными
 - `strcpy[dest, src]` - копирование строки
-- `strlen[str]` - длина строки
 - `num_to_string[num, buffer]` - преобразование числа в строку
-- `string_to_num[str]` - преобразование строки в число
-
-### math.asm
-Математические операции
-- `add[a, b, result]` - сложение
-- `sub[a, b, result]` - вычитание
-- `mul[a, b, result]` - умножение
-- `div[a, b, result]` - деление
+- `memcpy[target, dest, count]` - компирует значение в памяти из одного адреса в другой `count` количество раз
 
 ## Примеры программ
 
@@ -165,12 +154,13 @@ box start[] (
 
 num16 counter : 5
 char message: Array{'C' 'o' 'u' 'n' 't' ':' ' ' '$'}
+char buffer: ?5
 
 box start[] (
     #loop
     open print[message]
     du->num_to_string[counter, buffer]
-    open println[buffer]
+    open print[buffer]
     
     ; Уменьшаем счетчик
     math->sub[counter, 1, counter]
@@ -191,5 +181,5 @@ python main.py input.box output.asm
 
 Затем используйте KASM для получения исполняемого файла:
 ```bash
-kasm output.asm output.exe
+kasm output.asm output.bin
 ``` 

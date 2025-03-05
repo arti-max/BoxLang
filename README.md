@@ -70,9 +70,9 @@ open function_name[arg1, arg2]
 Внутри функций можно использовать локальные метки с префиксом `#`:
 ```box
 box function[] (
-    #loop
+    #loop_label    ; _label в конце обязателен
     ; код
-    loop[#loop, counter]  ; переход на локальную метку
+    loop[#loop_label, counter]  ; переход на локальную метку
 )
 ```
 

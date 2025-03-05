@@ -56,7 +56,7 @@ num16 result: ?1          ; Резервирование памяти
 
 ### Объявление функции
 ```box
-box function_name[arg1 %si, arg2 %di] (
+box function_name[si%arg1, dx%arg2] (
     ; тело функции
 )
 ```

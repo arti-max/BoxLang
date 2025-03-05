@@ -1,0 +1,21 @@
+@incl <io>
+@incl "test/incl_file"
+
+char hello: Array{'H' 'e' 'l' 'l' 'o' ',' ' ' 'W' 'o' 'r' 'l' 'd' '$'}
+char input_var: ?64
+
+num16 n1 : 5
+num16 n2 : 4
+char result: ?6
+num16 is_loop : 1
+
+lib math : incl "test/math"
+lib du : incl <datautils>
+
+box start[] (
+    math->add[n2, n1, 0]
+    open scanstr[input_var]
+    du->num_to_string[n2, result]
+    open print[result]
+    open exit[2]
+)

@@ -1,0 +1,27 @@
+
+
+box add[ax%arg1, bx%arg2, si%arg3] (
+    ; ax - num1
+    ; bx - num2
+    ; si - var_to_save
+    gasm["cmp %si $00"]
+    gasm["jme .from_vars"]
+
+    gasm[".from_src:"]
+    gasm["add %ax %bx"]
+    gasm["jmp .end"]
+
+    gasm[".from_vars:"]
+    gasm["mov %ax *%ax"]
+    gasm["mov %bx *%bx"]
+    gasm["mov %si %ax"]
+    gasm["add %ax %bx"]
+    gasm[".end:"]
+    gasm["storb %ax"]
+)
+
+box sub[ax%arg1, bx%arg2, si%arg3] (
+    ; ax - num1
+    ; bx - num2
+    ; si - var_to_save
+)

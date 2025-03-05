@@ -1,0 +1,29 @@
+@incl <io>
+
+lib datautils : incl <datautils>
+
+; буфферы
+num16 CMP_RESULT : ?1			; переменная для хранения результата сравнения строк
+char TEXT_BUFFER : ?64
+; переменные
+char String : Array{'h' 'i'}	; обязательно без $, т.к. string_compare специально удаляет его в ведённой строке от пользователя
+char NoCmp : Array{'N' 'o' '$'}
+char IsCmp : Array{'Y' 'e' 's' '$'}
+; константы
+num16 TRUE : 1
+num16 FALSE : 0
+
+box start[] (
+	
+	open scanstr[TEXT_BUFFER]	; ввод строки от пользователя
+	datautils->string_compare[TEXT_BUFFER, String, CMP_RESULT]	; проверяем введённый текст с переменной String на равенство. Если равны, то CMP_RESULT = 1, иначе CMP_RESULT = 0
+	
+	goto[#else_1, CMP_RESULT, 0]	; переходим на else, если строки не равны
+	#if_1
+	open print[IsCmp]
+	goto[#end_label, TRUE, 1]	; если 1=1, то переходим в конец (т.е. оно в любом случае перейдёт в конец)
+	#else_1
+	open print[NoCmp]
+	#end_label
+	open exit[0]				; выход из программы с кодом 0
+)

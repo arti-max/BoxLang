@@ -1,0 +1,5 @@
+
+
+box exit2[] (
+    gasm["call exit"]
+)

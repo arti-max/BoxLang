@@ -1,0 +1,60 @@
+@incl <io>
+@incl <datautils>
+
+; Переменные
+num16 TRUE : 1
+num16 FALSE : 0
+num16 COMPARE_RESULT : ?1
+
+; Буфер для ввода команды
+char input_buffer: ?64
+
+; Команда help
+char cmd_help: Array{'h' 'e' 'l' 'p'}
+char cmd_exit: Array{'e' 'x' 'i' 't'}
+
+; Сообщения
+char msg_help : Array{'1' ' ' '1' ' ' '2' ' ' '$'}  ; Исправлено: убраны лишние пробелы
+char msg_u : Array{'U' 'n' 'k' 'n' 'o' 'w' 'n' '$'}
+char cmd_input_text : Array{'E' 'n' 't' 'e' 'r' ' ' 'a' ' ' 'c' 'o' 'm' 'm' 'a' 'n' 'd' ':' ' '}
+
+box start[] (
+    ; Основной цикл программы
+    #main_loop
+    open print[cmd_input_text]
+	;open trapf[]
+    open scanstr[input_buffer]  ; Чтение команды от пользователя
+    
+    open set_new_data[COMPARE_RESULT, 0]
+
+    ; Проверка команды [help]
+	;open trapf[]
+    open string_compare[input_buffer, cmd_help, COMPARE_RESULT]
+	;open trapf[]
+
+    goto[#unknow_com_label, COMPARE_RESULT, 0]
+	;open trapf[]
+    #help_com_label
+    open print[msg_help]  ; Вывод сообщения для команды help
+    loop[#main_loop, TRUE]
+
+    #unknow_com_label
+
+    ; Проверка команды [exit]
+	;open trapf[]
+    open string_compare[input_buffer, cmd_exit, COMPARE_RESULT]
+	;open trapf[]
+
+    goto[#unknow_exit_label, COMPARE_RESULT, 0]
+	;open trapf[]
+    #exit_com_label
+    open exit[0]
+
+    #unknow_exit_label
+    open print[msg_u]  ; Вывод сообщения для неизвестной команды
+
+    ; Возврат в начало цикла
+    loop[#main_loop, TRUE]
+
+    open exit[0]
+)

@@ -16,19 +16,7 @@ puts:
     jmp puts
 
 exit:
-    push %bp
-    mov %bp %sp
-    ;arg parse
-    mov %si %bp
-    add %si 4
-    mov %sp %si
-    pop %si
-    mov %sp %bp
-    push %si
     int $00
-    mov %sp %bp
-    pop %bp
-    ret
 
 trapf:
     trap

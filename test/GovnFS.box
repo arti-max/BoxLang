@@ -2,5 +2,5 @@
 
 box read_signature[] (
     gasm["mov %si $0000"]
-    
+    gasm["ldds"]
 )

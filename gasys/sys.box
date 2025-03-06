@@ -1,0 +1,7 @@
+@incl <io>
+@incl <disk>
+
+box start[] (
+
+    open exit[0]
+)

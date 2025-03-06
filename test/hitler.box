@@ -1,0 +1,11 @@
+@incl <io>
+
+char hello : Array{'h' 'e' 'l' 'l' 'o' '$'}			; переменная типа char - содержит строку hello\n
+
+box start[] (
+	
+	open print[hello]	; в аргменты функции print передаём переменную hello, которую объявили ранее. Вызов функций это open
+	
+	open exit[0]		; выход из программы с кодом 0
+)
+

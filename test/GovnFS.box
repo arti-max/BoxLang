@@ -1,6 +1,108 @@
+num16 GFS_SIGN_SERNUM : ?4
+num16 MAGIC_BYTE : ?1
+num16 DISK_SIZE : ?1
+num16 DRIVE_LETTER : ?1
+
+; GovnFS signatures
+char COM_FILE_SIGN : Array{ $F2 'c' 'o' 'm' '/' $F2}
+char TXT_FILE_SIGN: Array{$F2 't' 'x' 't' '/' $F2}
+char COM_FILE_FULL: ?96
+char DIR_TAG: Array{$F2 'c' 'o' 'm' '/' $F2}
 
 
-box read_signature[] (
+; strcmp - Check if two strings are equal
+; Arguments:
+; ax - first string address
+; bx - second string address
+; Returns:
+; ax - status
+box gfs_strcmp[] (
+gasm["mov %si *%ax"]
+gasm["mov %gi *%bx"]
+gasm["cmp %si %gi"]
+gasm["jmne .fail"]
+gasm["cmp %si $00"]
+gasm["jme .eq"]
+gasm["inx %ax"]
+gasm["inx %bx"]
+gasm["jmp gfs_strcmp"]
+#eq
+gasm["mov %ax $00"]
+gasm["ret"]
+#fail
+gasm["mov %ax $01"]
+)
+
+box gfs_read_signature[] (
+    ; magic byte (disk)
     gasm["mov %si $0000"]
     gasm["ldds"]
+	gasm["mov %si MAGIC_BYTE"]
+    gasm["storb %ax"]
+
+    ; drive letter (disk)
+    gasm["mov %si $0011"]
+    gasm["ldds"]
+    gasm["mov %si DRIVE_LETTER"]
+    gasm["storb %ax"]
+
+    ; disk size (in sectors) (disk)
+    gasm["mov %si $0010"]
+    gasm["ldds"]
+    gasm["mov %si DISK_SIZE"]
+    gasm["storb %ax"]
+
+    ; GFS_SIGN_SERNUM\
+    ; 1
+    gasm["mov %si $000C"]
+    gasm["ldds"]
+    gasm["mov %si GFS_SIGN_SERNUM"]
+    gasm["storb %ax"]
+    ; 2
+    gasm["mov %si $000D"]
+    gasm["ldds"]
+    gasm["mov %si GFS_SIGN_SERNUM"]
+    gasm["inx %si"]
+    gasm["storb %ax"]
+    ; 3
+    gasm["mov %si $000E"]
+    gasm["ldds"]
+    gasm["mov %si GFS_SIGN_SERNUM"]
+    gasm["add %si $02"]
+    gasm["storb %ax"]
+    ; 4
+    gasm["mov %si $000F"]
+    gasm["ldds"]
+    gasm["mov %si GFS_SIGN_SERNUM"]
+    gasm["add %si $03"]
+    gasm["storb %ax"]
+
+    gasm["mov %ax %cx"]
+)
+
+
+; copy file contents into a address
+; dx - tag
+; ax - filename
+; si - address to store data from a file
+box gfs_read_file[dx%tag, ax%filename, si%addr_file] (
+    gasm["mov %si COM_FILE_FULL"]
+    gasm["str $F1"]								; Load $F1 into com_file_full[0]
+    gasm["mov %bx %si"]
+    gasm["call gfs_strcmp"]	                    ; Load filename into com_file_full
+    gasm["mov %ax COM_FILE_SIGN"]				; Load file signature into com_file_full
+    gasm["call gfs_strcmp"]
+    gasm["mov %si %bx"] 
+	gasm["str $00"] 							; Load $00 into com_file_full so it doesn't include the
+												; past query
+	gasm["mov %si $001F"]
+	gasm["mov %gi COM_FILE_FULL"]
+    gasm["call disk_string_subset"]
+    gasm["cmp %bx $01"]
+    gasm["jmp .end"]
+    gasm["mov %gi %dx"]
+    gasm["call gfs_file_copy"]
+    gasm[""]
+
+    #end
 )

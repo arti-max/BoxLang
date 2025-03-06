@@ -223,6 +223,11 @@ class Lexer:
                 self.advance()
                 return token
             
+            if self.current_char == '%':
+                token = Token(TokenType.PERCENT, '%', self.line, self.column)
+                self.advance()
+                return token
+            
             raise SyntaxError(f"Unexpected character: {self.current_char} at line {self.line}, column {self.column}")
         
         return Token(TokenType.EOF, "", self.line, self.column) 

@@ -87,8 +87,6 @@ class Parser:
                 path += '.asm'
         else:
             # Для локального файла читаем путь из строки
-            if self.current_token.type != TokenType.STRING:
-                self.error("Expected file path in quotes")
             path = self.current_token.value
             self.eat(TokenType.STRING)
             
@@ -115,10 +113,52 @@ class Parser:
                     # .box файлы нужно парсить
                     lexer = Lexer(source)
                     parser = Parser(lexer, self.ctx)
+                    # Если мы внутри lib-переменной, передаем префикс
+                    if hasattr(self, 'lib_prefix'):
+                        parser.lib_prefix = self.lib_prefix
                     parser.parse_without_generate()
                 else:
-                    # .asm файлы добавляем как есть
-                    self.ctx.add_imported_code(source)
+                    # .asm файлы добавляем как есть, но добавляем префикс к меткам и их вызовам
+                    lines = source.split('\n')
+                    modified_lines = []
+                    
+                    # Сначала собираем все метки в файле
+                    labels = set()
+                    for line in lines:
+                        line = line.strip()
+                        if line.endswith(':'):
+                            label = line[:-1].strip()
+                            if not label.startswith('.'):  # Пропускаем локальные метки
+                                labels.add(label)
+                    
+                    # Получаем префикс из текущего контекста
+                    prefix = self.lib_prefix if hasattr(self, 'lib_prefix') else ""
+                    
+                    # Теперь обрабатываем каждую строку
+                    for line in lines:
+                        line = line.strip()
+                        if line.endswith(':'):
+                            # Это метка
+                            label = line[:-1].strip()
+                            if label.startswith('.'):
+                                modified_lines.append(f"{label}:")
+                            else:
+                                modified_lines.append(f"{prefix}{label}:")
+                        else:
+                            # Проверяем, есть ли в строке вызов функции (call)
+                            if 'call ' in line:
+                                parts = line.split('call ', 1)
+                                prefix_part = parts[0]
+                                func = parts[1].strip()
+                                # Если вызываемая функция есть в списке меток и не начинается с точки
+                                if func in labels and not func.startswith('.'):
+                                    modified_lines.append(f"{prefix_part}call {prefix}{func}")
+                                else:
+                                    modified_lines.append(line)
+                            else:
+                                modified_lines.append(line)
+                    
+                    self.ctx.add_imported_code('\n'.join(modified_lines))
             except FileNotFoundError:
                 self.error(f"Could not find file: {path}")
     
@@ -163,28 +203,37 @@ class Parser:
         
         # Аргументы функции
         args = []
+        reg_map = {}  # Словарь для маппинга имен на регистры
+        
         if self.current_token.type == TokenType.BRACKET_OPEN:
             self.eat(TokenType.BRACKET_OPEN)
-            while self.current_token.type in {TokenType.IDENT, TokenType.REGISTER, TokenType.INT, TokenType.HEX}:
+            while self.current_token.type in {TokenType.REGISTER, TokenType.INT, TokenType.HEX}:
                 if self.current_token.type == TokenType.REGISTER:
+                    # Читаем регистр
                     reg = self.current_token.value
+                    if reg not in ['ax', 'bx', 'cx', 'dx', 'si']:
+                        self.error("Expected register name (ax, bx, cx, dx, si)")
                     self.eat(TokenType.REGISTER)
-                    if self.current_token.type == TokenType.PERCENT:
-                        self.eat(TokenType.PERCENT)
-                        if self.current_token.type != TokenType.IDENT:
-                            self.error("Expected argument name after %")
-                        arg_name = self.current_token.value
-                        self.eat(TokenType.IDENT)
-                        args.append(FunctionArg(reg, arg_name))
+                    
+                    if self.current_token.type != TokenType.PERCENT:
+                        self.error("Expected % after register")
+                    self.eat(TokenType.PERCENT)
+                    
+                    # Читаем имя аргумента
+                    if self.current_token.type != TokenType.IDENT:
+                        self.error("Expected argument name after %")
+                    arg_name = self.current_token.value
+                    self.eat(TokenType.IDENT)
+                    
+                    # Сохраняем маппинг имени на регистр
+                    reg_map[arg_name] = reg
+                    args.append(FunctionArg(reg, arg_name))
                 elif self.current_token.type == TokenType.INT:
                     args.append(str(self.current_token.value))
                     self.eat(TokenType.INT)
                 elif self.current_token.type == TokenType.HEX:
                     args.append(str(int(self.current_token.value[1:], 16)))
                     self.eat(TokenType.HEX)
-                else:
-                    args.append(self.current_token.value)
-                    self.eat(TokenType.IDENT)
                 
                 # Проверяем наличие запятой
                 if self.current_token.type == TokenType.COMMA:
@@ -197,9 +246,10 @@ class Parser:
             
             self.eat(TokenType.BRACKET_CLOSE)
         
-        # Сохраняем аргументы функции
+        # Сохраняем аргументы функции и маппинг регистров
         if args:
             self.function_args[name] = args
+            self.current_reg_map = reg_map
         
         # Начинаем функцию
         self.ctx.start_function(name)
@@ -310,8 +360,9 @@ class Parser:
             self.ctx.add_asm("  pop %bp")
         self.ctx.add_asm("  ret")
         
-        # Очищаем текущую функцию
+        # Очищаем текущую функцию и маппинг регистров
         self.current_function = None
+        self.current_reg_map = None
     
     def parse_variable(self, var_type: str):
         """Парсит объявление переменной"""
@@ -392,20 +443,43 @@ class Parser:
                     parser.lib_prefix = name + "_"
                     parser.parse_without_generate()
                 else:
-                    # .asm файлы добавляем как есть, но добавляем префикс к меткам функций
+                    # .asm файлы добавляем как есть, но добавляем префикс к меткам и их вызовам
                     lines = source.split('\n')
                     modified_lines = []
+                    
+                    # Сначала собираем все метки в файле
+                    labels = set()
                     for line in lines:
-                        # Если строка содержит метку (заканчивается на :)
-                        if line.strip().endswith(':'):
-                            label = line.strip()[:-1]  # убираем :
-                            # Если метка начинается с точки, оставляем как есть
+                        line = line.strip()
+                        if line.endswith(':'):
+                            label = line[:-1].strip()
+                            if not label.startswith('.'):  # Пропускаем локальные метки
+                                labels.add(label)
+                    
+                    # Теперь обрабатываем каждую строку
+                    for line in lines:
+                        line = line.strip()
+                        if line.endswith(':'):
+                            # Это метка
+                            label = line[:-1].strip()
                             if label.startswith('.'):
                                 modified_lines.append(f"{label}:")
                             else:
                                 modified_lines.append(f"{name}_{label}:")
                         else:
-                            modified_lines.append(line)
+                            # Проверяем, есть ли в строке вызов функции (call)
+                            if 'call ' in line:
+                                parts = line.split('call ', 1)
+                                prefix = parts[0]
+                                func = parts[1].strip()
+                                # Если вызываемая функция есть в списке меток и не начинается с точки
+                                if func in labels and not func.startswith('.'):
+                                    modified_lines.append(f"{prefix}call {name}_{func}")
+                                else:
+                                    modified_lines.append(line)
+                            else:
+                                modified_lines.append(line)
+                    
                     self.ctx.add_imported_code('\n'.join(modified_lines))
             except FileNotFoundError:
                 self.error(f"Could not find file: {path}")
@@ -485,7 +559,22 @@ class Parser:
         self.eat(TokenType.BRACKET_OPEN)
         if self.current_token.type != TokenType.STRING:
             self.error("Expected string in gasm[]")
+        
+        # Заменяем имена аргументов на регистры
         code = self.current_token.value
+        if hasattr(self, 'current_reg_map') and self.current_reg_map:
+            for name, reg in self.current_reg_map.items():
+                code = code.replace(name, f"%{reg}")
+        
+        # Обрабатываем вызовы функций внутри ассемблерного кода
+        if hasattr(self, 'lib_prefix') and 'call ' in code:
+            parts = code.split('call ', 1)
+            prefix = parts[0]
+            func = parts[1].strip()
+            # Если функция не начинается с точки (не локальная) и не содержит префикс
+            if not func.startswith('.') and not '_' in func:
+                code = f"{prefix}call {self.lib_prefix}{func}"
+        
         self.ctx.add_asm(f"  {code}")
         self.eat(TokenType.STRING)
         self.eat(TokenType.BRACKET_CLOSE)
@@ -494,23 +583,16 @@ class Parser:
         """Парсит вызов функции"""
         self.eat(TokenType.OPEN)
         
-        if self.current_token.type == TokenType.IDENT:
-            # Обычный вызов функции
-            func_name = self.current_token.value
-            self.eat(TokenType.IDENT)
-        else:
-            # Вызов через lib переменную
-            lib_var = self.current_token.value
-            self.eat(TokenType.IDENT)
-            
-            if self.current_token.type != TokenType.ARROW:
-                self.error("Expected -> after lib variable")
-            self.eat(TokenType.ARROW)
-            
-            if self.current_token.type != TokenType.IDENT:
-                self.error("Expected function name after ->")
-            func_name = f"{lib_var}_{self.current_token.value}"
-            self.eat(TokenType.IDENT)
+        if self.current_token.type != TokenType.IDENT:
+            self.error("Expected function name after open")
+        
+        # Получаем имя функции
+        func_name = self.current_token.value
+        self.eat(TokenType.IDENT)
+        
+        # Если мы внутри lib-файла, добавляем префикс
+        if hasattr(self, 'lib_prefix'):
+            func_name = self.lib_prefix + func_name
         
         # Аргументы вызова
         args = []

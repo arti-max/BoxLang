@@ -8,7 +8,7 @@ class FunctionArg:
     arg_name: str
 
 class Parser:
-    def __init__(self, lexer: Lexer, ctx):
+    def __init__(self, lexer: Lexer, ctx, ftp):
         self.lexer = lexer
         self.ctx = ctx
         self.current_token = self.lexer.get_next_token()
@@ -16,9 +16,11 @@ class Parser:
         self.function_args = {}  # имя функции -> список аргументов
         self.imported_files = set()  # множество импортированных файлов
         self.lib_vars = {}  # имя -> путь к файлу
+        self.file_to_parse = ftp
+        self.is_boot = False
     
     def error(self, message: str):
-        raise SyntaxError(f"{message} at line {self.current_token.line}, column {self.current_token.column}")
+        raise SyntaxError(f"{message} at line {self.current_token.line}, column {self.current_token.column} in file {self.file_to_parse}")
     
     def eat(self, token_type: TokenType):
         if self.current_token.type == token_type:
@@ -27,8 +29,10 @@ class Parser:
             self.error(f"Expected {token_type}, got {self.current_token.type}")
     
     def parse(self) -> str:
+        self.ctx.is_boot = self.is_boot
         """Основной метод парсинга"""
         while self.current_token.type != TokenType.EOF:
+            print(f"{self.current_token} FILE: {self.file_to_parse}")
             if self.current_token.type == TokenType.AT:
                 # Обрабатываем @incl
                 self.eat(TokenType.AT)
@@ -91,7 +95,7 @@ class Parser:
             self.eat(TokenType.STRING)
             
             # Пробуем найти файл с разными расширениями
-            base_path = path
+            base_path = path.replace('.', '/')
             for ext in ['.box', '.asm']:
                 try:
                     with open(base_path + ext, 'r') as f:
@@ -112,7 +116,7 @@ class Parser:
                 if path.endswith('.box'):
                     # .box файлы нужно парсить
                     lexer = Lexer(source)
-                    parser = Parser(lexer, self.ctx)
+                    parser = Parser(lexer, self.ctx, path)
                     # Если мы внутри lib-переменной, передаем префикс
                     if hasattr(self, 'lib_prefix'):
                         parser.lib_prefix = self.lib_prefix
@@ -179,6 +183,8 @@ class Parser:
                 self.parse_variable("char")
             elif self.current_token.type == TokenType.NUM16:
                 self.parse_variable("num16")
+            elif self.current_token.type == TokenType.LIB:
+                self.parse_variable("lib")
             elif self.current_token.type == TokenType.GASM:
                 self.parse_gasm()
             else:

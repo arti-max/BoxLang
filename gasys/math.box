@@ -1,3 +1,5 @@
+@incl "gasys.boot.boot"
+
 box add[ax%num1, bx%num2, si%save_addr] (
     ; ax - num1
     ; bx - num2
@@ -57,7 +59,7 @@ box mul[ax%num1, bx%num2, si%save_addr] (
     gasm[".end:"]
     gasm["storb num1"]
 )    
-box dov[ax%num1, bx%num2, si%save_addr] (
+box div[ax%num1, bx%num2, si%save_addr] (
     ; ax - num1
     ; bx - num2
     ; si - var_to_save

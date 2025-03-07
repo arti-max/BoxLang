@@ -1,0 +1,10 @@
+; comment
+lib disk : incl <disk>
+lib disk2 : incl <disk>
+
+box boot[] (
+    disk->read_sector[0, $0000]
+    disk->read_sector[1, $0200]
+    disk->read_sector[2, $0400]
+    gasm["jmp $0000"]
+)

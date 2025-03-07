@@ -67,7 +67,7 @@ class Lexer:
             'goto': TokenType.GOTO,
         }
         
-        self.registers = {'ax', 'bx', 'cx', 'dx', 'si', 'bp', 'sp', 'gi'}
+        self.registers = {'ax', 'bx', 'cx', 'dx', 'si', 'bp', 'sp', 'gi', 'ex', 'fx', 'hx', 'lx', 'x', 'y', 'ix', 'iy', 'ps', 'pc'}
         
         self.single_chars = {
             '[': TokenType.BRACKET_OPEN,

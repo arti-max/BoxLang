@@ -1,7 +1,8 @@
 @incl <io>
-@incl <disk>
+@incl "gasys.math"
 
 box start[] (
+
 
     open exit[0]
 )

@@ -4,6 +4,7 @@ class CodegenContext:
         self.functions = {}  # имя -> [строки кода]
         self.current_function = None
         self.imported_code = []  # код из импортированных файлов
+        self.is_boot = False
         
         # Загружаем стандартную библиотеку
         with open("stdlib/def.asm") as f:
@@ -46,7 +47,11 @@ class CodegenContext:
         result = []
         
         # Прыжок на точку входа
-        result.append("jmp start\n")
+        print(self.is_boot)
+        if self.is_boot:
+            result.append("jmp boot\n")
+        else:
+            result.append("jmp start\n")
         
         # Секция переменных
         print(f"[DEBUG] Variables count: {len(self.variables)}")

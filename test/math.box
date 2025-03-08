@@ -1,27 +1,78 @@
-
-
-box add[ax%arg1, bx%arg2, si%arg3] (
+box add[ax%num1, bx%num2, si%save_addr] (
     ; ax - num1
     ; bx - num2
     ; si - var_to_save
-    gasm["cmp %si $00"]
+    gasm["cmp save_addr $00"]
     gasm["jme .from_vars"]
 
     gasm[".from_src:"]
-    gasm["add %ax %bx"]
+    gasm["add num1 num2"]
     gasm["jmp .end"]
 
     gasm[".from_vars:"]
-    gasm["mov %ax *%ax"]
-    gasm["mov %bx *%bx"]
-    gasm["mov %si %ax"]
-    gasm["add %ax %bx"]
+    gasm["mov num1 *num1"]
+    gasm["mov num2 *num2"]
+    gasm["mov save_addr num1"]
+    gasm["add num1 num2"]
     gasm[".end:"]
-    gasm["storb %ax"]
+    gasm["storb num1"]
 )
 
-box sub[ax%arg1, bx%arg2, si%arg3] (
+box sub[ax%num1, bx%num2, si%save_addr] (
     ; ax - num1
     ; bx - num2
     ; si - var_to_save
+    gasm["cmp save_addr $00"]
+    gasm["jme .from_vars"]
+
+    gasm[".from_src:"]
+    gasm["sub num1 num2"]
+    gasm["jmp .end"]
+
+    gasm[".from_vars:"]
+    gasm["mov num1 *num1"]
+    gasm["mov num2 *num2"]
+    gasm["mov save_addr num1"]
+    gasm["sub num1 num2"]
+    gasm[".end:"]
+    gasm["storb num1"]
 )
+
+box mul[ax%num1, bx%num2, si%save_addr] (
+    ; ax - num1
+    ; bx - num2
+    ; si - var_to_save
+    gasm["cmp save_addr $00"]
+    gasm["jme .from_vars"]
+
+    gasm[".from_src:"]
+    gasm["mul num1 num2"]
+    gasm["jmp .end"]
+
+    gasm[".from_vars:"]
+    gasm["mov num1 *num1"]
+    gasm["mov num2 *num2"]
+    gasm["mov save_addr num1"]
+    gasm["mul num1 num2"]
+    gasm[".end:"]
+    gasm["storb num1"]
+)    
+box dov[ax%num1, bx%num2, si%save_addr] (
+    ; ax - num1
+    ; bx - num2
+    ; si - var_to_save
+    gasm["cmp save_addr $00"]
+    gasm["jme .from_vars"]
+
+    gasm[".from_src:"]
+    gasm["div num1 num2"]
+    gasm["jmp .end"]
+
+    gasm[".from_vars:"]
+    gasm["mov num1 *num1"]
+    gasm["mov num2 *num2"]
+    gasm["mov save_addr num1"]
+    gasm["div num1 num2"]
+    gasm[".end:"]
+    gasm["storb num1"]
+)    

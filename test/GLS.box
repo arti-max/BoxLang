@@ -1,0 +1,15 @@
+@incl <io>
+
+num16 num1 : 4
+num16 num2 : 5
+num16 result : ?1
+
+lib math : incl "test/math"
+
+box start[] (
+    math->sub[num2, num1, result]
+    open trapf[]
+
+
+    open exit[0]
+)

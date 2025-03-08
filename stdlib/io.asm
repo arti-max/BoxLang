@@ -131,6 +131,7 @@ push %bp
     div %ax 10
     stgrb %ax
     jmp .loop
+
 .end:
     mov %sp %bp
     pop %bp

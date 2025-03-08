@@ -1,5 +1,6 @@
 jmp boot
 
+void_fill: reserve 4096 bytes
 
 ; Standard library (def.asm)
 ; РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏ Р±РёР±Р»РёРѕС‚РµРєР°
@@ -70,48 +71,6 @@ mov %sp %bp
 pop %bp
 ret
 
-DISK_LIB_BUFFER: reserve 512 bytes
-
-; 1 sector - 512 bytes
-
-; Read 1 sector from disk
-; ax - sector
-; bx - save_addr
-disk2_read_sector:
-push %bp
-mov %bp %sp
-; arg 1 [bp+4]
-mov %ax %bp
-add %ax 4
-mov %sp %ax
-pop %ax
-; arg2 [bp+6]
-mov %bx %bp
-add %bx 6
-mov %sp %bx
-pop %bx
-
-mov %sp %bp
-;logic
-mov %cx %ax
-mov %gi 512
-mul %cx 512
-.logic:
-cmp %gi $00
-jme .end
-mov %si %cx
-ldds
-mov %si %bx
-storb %ax
-inx %cx
-inx %bx
-dex %gi
-jmp .logic
-
-.end:
-mov %sp %bp
-pop %bp
-ret
 
 
 ; Main code
@@ -123,13 +82,13 @@ boot:
   add %gi 4
   mov %sp %gi
   push 512
-  push 1
+  push 0
   call disk_read_sector
   mov %gi %sp
   add %gi 4
   mov %sp %gi
   push 1024
-  push 2
+  push 0
   call disk_read_sector
   mov %gi %sp
   add %gi 4

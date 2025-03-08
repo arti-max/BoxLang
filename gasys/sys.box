@@ -1,8 +1,11 @@
 @incl <io>
-@incl "gasys.math"
+
+char hi : Array{'h' 'i' '$'}
+num16 res : ?4
 
 box start[] (
-
+    #loop
+    open print[hi]
 
     open exit[0]
 )

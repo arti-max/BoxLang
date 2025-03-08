@@ -1,7 +1,8 @@
 jmp start
 
-hi: bytes $68 $69 $0A $00
-res: reserve 4 bytes
+num1: bytes $04
+num2: bytes $05
+result: reserve 1 bytes
 
 ; Standard library (def.asm)
 ; РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏ Р±РёР±Р»РёРѕС‚РµРєР°
@@ -162,24 +163,165 @@ jmp .loop
 div %ax 10
 stgrb %ax
 jmp .loop
-
 .end:
 mov %sp %bp
 pop %bp
 ret
 
 ; Main code
+math_add:
+  push %bp
+  mov %bp %sp
+  mov %ax %bp
+  add %ax 4
+  mov %sp %ax
+  pop %ax
+  mov %sp %bp
+  mov %bx %bp
+  add %bx 6
+  mov %sp %bx
+  pop %bx
+  mov %sp %bp
+  mov %si %bp
+  add %si 8
+  mov %sp %si
+  pop %si
+  mov %sp %bp
+  cmp %si $00
+  jme .from_vars
+  .from_src:
+  add %ax %bx
+  jmp .end
+  .from_vars:
+  mov %ax *%ax
+  mov %bx *%bx
+  mov %si %ax
+  add %ax %bx
+  .end:
+  storb %ax
+  mov %sp %bp
+  pop %bp
+  ret
+
+math_sub:
+  push %bp
+  mov %bp %sp
+  mov %ax %bp
+  add %ax 4
+  mov %sp %ax
+  pop %ax
+  mov %sp %bp
+  mov %bx %bp
+  add %bx 6
+  mov %sp %bx
+  pop %bx
+  mov %sp %bp
+  mov %si %bp
+  add %si 8
+  mov %sp %si
+  pop %si
+  mov %sp %bp
+  cmp %si $00
+  jme .from_vars
+  .from_src:
+  sub %ax %bx
+  jmp .end
+  .from_vars:
+  mov %ax *%ax
+  mov %bx *%bx
+  mov %si %ax
+  sub %ax %bx
+  .end:
+  storb %ax
+  mov %sp %bp
+  pop %bp
+  ret
+
+math_mul:
+  push %bp
+  mov %bp %sp
+  mov %ax %bp
+  add %ax 4
+  mov %sp %ax
+  pop %ax
+  mov %sp %bp
+  mov %bx %bp
+  add %bx 6
+  mov %sp %bx
+  pop %bx
+  mov %sp %bp
+  mov %si %bp
+  add %si 8
+  mov %sp %si
+  pop %si
+  mov %sp %bp
+  cmp %si $00
+  jme .from_vars
+  .from_src:
+  mul %ax %bx
+  jmp .end
+  .from_vars:
+  mov %ax *%ax
+  mov %bx *%bx
+  mov %si %ax
+  mul %ax %bx
+  .end:
+  storb %ax
+  mov %sp %bp
+  pop %bp
+  ret
+
+math_dov:
+  push %bp
+  mov %bp %sp
+  mov %ax %bp
+  add %ax 4
+  mov %sp %ax
+  pop %ax
+  mov %sp %bp
+  mov %bx %bp
+  add %bx 6
+  mov %sp %bx
+  pop %bx
+  mov %sp %bp
+  mov %si %bp
+  add %si 8
+  mov %sp %si
+  pop %si
+  mov %sp %bp
+  cmp %si $00
+  jme .from_vars
+  .from_src:
+  div %ax %bx
+  jmp .end
+  .from_vars:
+  mov %ax *%ax
+  mov %bx *%bx
+  mov %si %ax
+  div %ax %bx
+  .end:
+  storb %ax
+  mov %sp %bp
+  pop %bp
+  ret
+
 start:
-.loop:
-  mov %gi hi
+  mov %gi result
   push %gi
-  call print
+  mov %gi num1
+  push %gi
+  mov %gi num2
+  push %gi
+  call math_sub
   mov %gi %sp
-  add %gi 2
+  add %gi 6
   mov %sp %gi
+  call trapf
   push 0
   call exit
   mov %gi %sp
   add %gi 2
   mov %sp %gi
+  mov %sp %bp
+  pop %bp
   ret

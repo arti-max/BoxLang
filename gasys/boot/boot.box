@@ -1,10 +1,9 @@
-; comment
+; reserve 4k for kernel or other programm at 00 on disk
+num16 void_fill : ?4096
 lib disk : incl <disk>
-lib disk2 : incl <disk>
 
 box boot[] (
     disk->read_sector[0, $0000]
     disk->read_sector[1, $0200]
-    disk->read_sector[2, $0400]
     gasm["jmp $0000"]
 )

@@ -150,8 +150,8 @@ class Parser:
                                 modified_lines.append(f"{prefix}{label}:")
                         else:
                             # Проверяем, есть ли в строке вызов функции (call)
-                            if 'call ' in line:
-                                parts = line.split('call ', 1)
+                            if 'call' in line:
+                                parts = line.split('call', 1)
                                 prefix_part = parts[0]
                                 func = parts[1].strip()
                                 # Если вызываемая функция есть в списке меток и не начинается с точки
@@ -286,6 +286,8 @@ class Parser:
                 self.parse_variable("char")
             elif self.current_token.type == TokenType.NUM16:
                 self.parse_variable("num16")
+            elif self.current_token.type == TokenType.LIB:
+                self.parse_variable("lib")
             elif self.current_token.type == TokenType.GASM:
                 self.parse_gasm()
             elif self.current_token.type == TokenType.OPEN:
@@ -297,6 +299,10 @@ class Parser:
             elif self.current_token.type == TokenType.HASH:
                 # Локальная метка
                 self.eat(TokenType.HASH)
+                if self.current_token.value in self.lexer.keywords:
+                    self.current_token.type = TokenType.IDENT
+                    self.current_token.value + str("_l")
+
                 if self.current_token.type != TokenType.IDENT:
                     self.error("Expected label name after #")
                 label = self.current_token.value
@@ -424,7 +430,7 @@ class Parser:
                 self.eat(TokenType.STRING)
                 
                 # Пробуем найти файл с разными расширениями
-                base_path = path
+                base_path = path.replace('.', '/')
                 for ext in ['.box', '.asm']:
                     try:
                         with open(base_path + ext, 'r') as f:
@@ -444,7 +450,7 @@ class Parser:
                 if path.endswith('.box'):
                     # .box файлы нужно парсить
                     lexer = Lexer(source)
-                    parser = Parser(lexer, self.ctx)
+                    parser = Parser(lexer, self.ctx, path)
                     # Сохраняем имя lib-переменной для добавления префикса к функциям
                     parser.lib_prefix = name + "_"
                     parser.parse_without_generate()

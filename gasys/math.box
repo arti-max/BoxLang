@@ -1,4 +1,4 @@
-@incl "gasys.boot.boot"
+lib boot_var : incl "gasys.boot.boot"
 
 box add[ax%num1, bx%num2, si%save_addr] (
     ; ax - num1

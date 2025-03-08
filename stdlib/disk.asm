@@ -1,4 +1,4 @@
-num16 DISK_LIB_BUFFER : ?512
+DISK_LIB_BUFFER: reserve 512 bytes
 
 ; 1 sector - 512 bytes
 
@@ -21,19 +21,23 @@ read_sector:
     
     mov %sp %bp
     ;logic
-    push %gi
+    mov %cx %ax
     mov %gi 512
-    mul %ax 512
+    mul %cx 512
 .logic:
     cmp %gi $00
     jme .end
-    lodb %ax %cx
+    mov %si %cx
+    ldds
     mov %si %bx
-    storb %cx
-    inx %ax
+    storb %ax
+    inx %cx
     inx %bx
     dex %gi
     jmp .logic
 
 .end:
+    mov %sp %bp
+    pop %bp
+    ret
 

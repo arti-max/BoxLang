@@ -3,7 +3,7 @@ print:
     mov %bp %sp
     ;arg parse
     mov %si %bp
-    add %si 4
+    add %si 6
     mov %sp %si
     pop %si
     mov %sp %bp
@@ -20,14 +20,14 @@ input:
     mov %bp %sp
     ; arg parse
     mov %si %bp
-    add %si 4   ; 1st arg
+    add %si 6   ; 1st arg
     mov %sp %si
     pop %si
     mov %sp %bp
     ; logic
     int $01
     pop %ax
-    stgrb %ax
+    stob %gi %ax
     ; end
     mov %sp %bp
     pop %bp
@@ -39,7 +39,7 @@ scanstr:
     mov %bp %sp 
     ; arg1
     mov %si %sp
-    add %si 4
+    add %si 6
     mov %sp %si
     pop %si
     mov %sp %bp
@@ -60,7 +60,7 @@ scanstr:
     ; Save to mem
     mov %gi *qptr
     add %si %gi
-    storb %dx
+    stob %si %dx
     sub %si %gi
     inx qptr
     
@@ -96,7 +96,7 @@ push %bp
     mov %bp %sp 
     ; arg1
     mov %ax %sp
-    add %ax 4
+    add %ax 6
     mov %sp %ax
     pop %ax
     mov %sp %bp
@@ -125,11 +125,11 @@ push %bp
     int $02
     sub %bx 48
     add %ax %bx
-    stgrb %ax
+    stob %gi %ax
     jmp .loop
 .back: ; Backspace handler
     div %ax 10
-    stgrb %ax
+    stob %gi %ax
     jmp .loop
 
 .end:

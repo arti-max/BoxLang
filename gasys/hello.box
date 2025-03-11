@@ -1,0 +1,16 @@
+@incl <io>
+
+char msg : {'H' 'e 'l' 'l' 'o' '$'}
+num16 test1 : 1234
+num24 test2 : 123456
+
+box start[] (
+    open print[msg]
+
+    open exit[0]
+)
+
+box test[ax%test1, bx%test2] (
+
+
+)

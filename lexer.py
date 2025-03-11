@@ -6,6 +6,7 @@ class TokenType(Enum):
     BOX = auto()      # box
     OPEN = auto()     # open
     NUM16 = auto()    # num16
+    NUM24 = auto()    # num24
     CHAR = auto()     # char
     LIB = auto()      # lib
     GASM = auto()     # gasm
@@ -13,6 +14,7 @@ class TokenType(Enum):
     ARRAY = auto()    # Array
     LOOP = auto()     # loop
     GOTO = auto()     # goto
+    JUMP = auto()     # jump
     HASH = auto()     # #
     
     BRACKET_OPEN = auto()  # [
@@ -59,12 +61,14 @@ class Lexer:
             'box': TokenType.BOX,
             'open': TokenType.OPEN,
             'num16': TokenType.NUM16,
+            'num24': TokenType.NUM24,
             'char': TokenType.CHAR,
             'lib': TokenType.LIB,
             'gasm': TokenType.GASM,
             'Array': TokenType.ARRAY,
             'loop': TokenType.LOOP,
             'goto': TokenType.GOTO,
+            'jump': TokenType.JUMP,
         }
         
         self.registers = {'ax', 'bx', 'cx', 'dx', 'si', 'bp', 'sp', 'gi', 'ex', 'fx', 'hx', 'lx', 'x', 'y', 'ix', 'iy', 'ps', 'pc'}

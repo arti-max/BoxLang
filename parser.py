@@ -47,6 +47,8 @@ class Parser:
                 self.parse_variable("char")
             elif self.current_token.type == TokenType.NUM16:
                 self.parse_variable("num16")
+            elif self.current_token.type == TokenType.NUM24:
+                self.parse_variable("num24")
             elif self.current_token.type == TokenType.LIB:
                 self.parse_variable("lib")
             elif self.current_token.type == TokenType.GASM:
@@ -183,6 +185,8 @@ class Parser:
                 self.parse_variable("char")
             elif self.current_token.type == TokenType.NUM16:
                 self.parse_variable("num16")
+            elif self.current_token.type == TokenType.NUM24:
+                self.parse_variable("num24")
             elif self.current_token.type == TokenType.LIB:
                 self.parse_variable("lib")
             elif self.current_token.type == TokenType.GASM:
@@ -270,9 +274,9 @@ class Parser:
             for i, arg in enumerate(args):
                 if isinstance(arg, FunctionArg):
                     # Загружаем значение из стека в регистр
-                    # +4 для пропуска сохраненного bp и адреса возврата
-                    # +2 для каждого следующего аргумента
-                    offset = 4 + i * 2
+                    # +6 для пропуска сохраненного bp и адреса возврата
+                    # +3 для каждого следующего аргумента
+                    offset = 6 + i * 3
                     self.ctx.add_asm(f"  mov %{arg.register} %bp")
                     self.ctx.add_asm(f"  add %{arg.register} {offset}")
                     self.ctx.add_asm(f"  mov %sp %{arg.register}")
@@ -296,6 +300,8 @@ class Parser:
                 self.parse_loop()
             elif self.current_token.type == TokenType.GOTO:
                 self.parse_goto()
+            elif self.current_token.type == TokenType.JUMP:
+                self.parse_jump()
             elif self.current_token.type == TokenType.HASH:
                 # Локальная метка
                 self.eat(TokenType.HASH)
@@ -358,7 +364,7 @@ class Parser:
                     # Очищаем стек от аргументов
                     if args:
                         self.ctx.add_asm(f"  mov %gi %sp")
-                        self.ctx.add_asm(f"  add %gi {len(args) * 2}")
+                        self.ctx.add_asm(f"  add %gi {len(args) * 3}")
                         self.ctx.add_asm(f"  mov %sp %gi")
                 else:
                     self.error(f"Unexpected identifier in function body: {lib_var}")
@@ -381,7 +387,7 @@ class Parser:
         if var_type == "lib":
             self.eat(TokenType.LIB)
         else:
-            self.eat(TokenType.CHAR if var_type == "char" else TokenType.NUM16)
+            self.eat(TokenType.CHAR if var_type == "char" else (TokenType.NUM16 if var_type == "num16" else TokenType.NUM24))
         
         if self.current_token.type != TokenType.IDENT:
             self.error("Expected variable name")
@@ -561,8 +567,28 @@ class Parser:
             if self.current_token.type == TokenType.HEX:
                 value = self.current_token.value
             else:
-                value = f"${self.current_token.value:02X}"
+                value = f"${self.current_token.value:04X}"
+
+            num_value = self.current_token.value
             self.eat(self.current_token.type)
+            # Разбиваем на старший и младший байты
+            byte_high = (num_value >> 8) & 0xFF
+            byte_low = num_value & 0xFF
+            value = f"${byte_high:02X} ${byte_low:02X}"
+            self.ctx.add_variable(name, value)
+        elif var_type == "num24":
+            # Числовое значение
+            if self.current_token.type == TokenType.HEX:
+                value = self.current_token.value
+            else:
+                value = f"${self.current_token.value:06X}"
+            num_value = self.current_token.value
+            self.eat(self.current_token.type)
+            # Разбиваем на три байта
+            byte_high = (num_value >> 16) & 0xFF
+            byte_mid = (num_value >> 8) & 0xFF
+            byte_low = num_value & 0xFF
+            value = f"${byte_high:02X} ${byte_mid:02X} ${byte_low:02X}"
             self.ctx.add_variable(name, value)
     
     def parse_gasm(self):
@@ -720,3 +746,19 @@ class Parser:
         self.ctx.add_asm(f"  mov %gi {var}")
         self.ctx.add_asm(f"  cmp *%gi {value}")
         self.ctx.add_asm(f"  jme .{label}")
+
+
+    def parse_jump(self):
+        self.eat(TokenType.JUMP)
+        self.eat(TokenType.BRACKET_OPEN)
+        if self.current_token.type != TokenType.HASH:
+            self.error("Expected local label (#) in jump")
+        self.eat(TokenType.HASH)
+        if self.current_token.type != TokenType.IDENT:
+            self.error("Expected label name after #")
+        label = self.current_token.value
+        self.eat(TokenType.IDENT)  
+        self.eat(TokenType.BRACKET_CLOSE)
+        
+        self.ctx.add_asm(f"   jmp .{label}")
+

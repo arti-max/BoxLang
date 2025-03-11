@@ -1,7 +1,8 @@
-jmp boot
+jmp start
 
-void_fill: reserve 4096 bytes
-boot_text: bytes $47 $41 $42 $6F $6F $74 $20 $76 $30 $2E $31 $0A
+msg: bytes $48 $65 $6C $6C $6F $0A
+test1: bytes $04 $D2
+test2: bytes $01 $E2 $40
 
 ; Standard library (def.asm)
 ; РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏ Р±РёР±Р»РёРѕС‚РµРєР°
@@ -29,51 +30,7 @@ trapf:
     ret
 
 ; Imported code
-DISK_LIB_BUFFER: reserve 512 bytes
-
-; 1 sector - 512 bytes
-
-; Read 1 sector from disk
-; ax - sector
-; bx - save_addr
-disk_read_sector:
-push %bp
-mov %bp %sp
-; arg 1 [bp+4]
-mov %ax %bp
-add %ax 4
-mov %sp %ax
-pop %ax
-; arg2 [bp+6]
-mov %bx %bp
-add %bx 6
-mov %sp %bx
-pop %bx
-
-mov %sp %bp
-;logic
-mov %cx %ax
-mov %gi 512
-mul %cx 512
-.logic:
-cmp %gi $00
-jme .end
-mov %si %cx
-ldds
-mov %si %bx
-storb %ax
-inx %cx
-inx %bx
-dex %gi
-jmp .logic
-
-.end:
-mov %sp %bp
-pop %bp
-ret
-
-
-io_print:
+print:
 push %bp
 mov %bp %sp
 ;arg parse
@@ -90,7 +47,7 @@ pop %bp
 ret
 
 ;args - var address
-io_input:
+input:
 push %bp
 mov %bp %sp
 ; arg parse
@@ -102,14 +59,14 @@ mov %sp %bp
 ; logic
 int $01
 pop %ax
-storb %ax
+stgrb %ax
 ; end
 mov %sp %bp
 pop %bp
 ret
 
 ; arg1 - %si : buffer
-io_scanstr:
+scanstr:
 push %bp
 mov %bp %sp
 ; arg1
@@ -164,9 +121,9 @@ ret
 
 
 ; scani - Scan an num from standard input
-io_; Returns:
+; Returns:
 ; ax - *number
-io_scan_num:
+scan_num:
 push %bp
 mov %bp %sp
 ; arg1
@@ -213,28 +170,33 @@ pop %bp
 ret
 
 ; Main code
-boot:
-  mov %gi boot_text
-  push %gi
-  call io_print
-  mov %gi %sp
-  add %gi 2
-  mov %sp %gi
-  push 0
-  push 0
-  call disk_read_sector
-  mov %gi %sp
-  add %gi 4
-  mov %sp %gi
-  push 512
-  push 1
-  call disk_read_sector
-  mov %gi %sp
-  add %gi 4
-  mov %sp %gi
-  jmp $0000
+test:
+  push %bp
+  mov %bp %sp
+  mov %ax %bp
+  add %ax 6
+  mov %sp %ax
+  pop %ax
+  mov %sp %bp
+  mov %bx %bp
+  add %bx 9
+  mov %sp %bx
+  pop %bx
+  mov %sp %bp
   mov %sp %bp
   pop %bp
   ret
 
-bootsecend:    bytes $AA $55
+start:
+  mov %gi msg
+  push %gi
+  call print
+  mov %gi %sp
+  add %gi 2
+  mov %sp %gi
+  push 0
+  call exit
+  mov %gi %sp
+  add %gi 2
+  mov %sp %gi
+  ret

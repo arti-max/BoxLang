@@ -49,9 +49,9 @@ class CodegenContext:
         # Прыжок на точку входа
         print(self.is_boot)
         if self.is_boot:
-            result.append("jmp boot\n")
+            result.append("jmp _boot\n")
         else:
-            result.append("jmp start\n")
+            result.append("jmp _start\n")
         
         # Секция переменных
         print(f"[DEBUG] Variables count: {len(self.variables)}")
@@ -78,15 +78,15 @@ class CodegenContext:
         
         # Пользовательские функции (кроме start)
         for name, body in self.functions.items():
-            if name != "start":
+            if name != "_start":
                 result.append(f"{name}:")
                 result.extend(body)
                 result.append("")
         
         # Точка входа
-        if "start" in self.functions:
-            result.append("start:")
-            result.extend(self.functions["start"])
+        if "_start" in self.functions:
+            result.append("_start:")
+            result.extend(self.functions["_start"])
             result.append("")
         
         return "\n".join(result) 

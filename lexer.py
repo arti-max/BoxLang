@@ -16,6 +16,9 @@ class TokenType(Enum):
     GOTO = auto()     # goto
     JUMP = auto()     # jump
     HASH = auto()     # #
+    IF = auto()       # if
+    ELSE = auto()     # else
+    ENDIF = auto()    # endif
     
     BRACKET_OPEN = auto()  # [
     BRACKET_CLOSE = auto() # ]
@@ -31,6 +34,7 @@ class TokenType(Enum):
     AT = auto()          # @
     DOT = auto()         # .
     ARROW = auto()       # ->
+    EQ = auto()
     
     STRING = auto()       # "text"
     CHAR_LIT = auto()    # 'c'
@@ -69,6 +73,9 @@ class Lexer:
             'loop': TokenType.LOOP,
             'goto': TokenType.GOTO,
             'jump': TokenType.JUMP,
+            'if': TokenType.IF,
+            'else': TokenType.ELSE,
+            'endif': TokenType.ENDIF,
         }
         
         self.registers = {'ax', 'bx', 'cx', 'dx', 'si', 'bp', 'sp', 'gi', 'ex', 'fx', 'hx', 'lx', 'x', 'y', 'ix', 'iy', 'ps', 'pc'}
@@ -88,6 +95,7 @@ class Lexer:
             ',': TokenType.COMMA,
             '@': TokenType.AT,
             '.': TokenType.DOT,
+            "=": TokenType.EQ,
         }
     
     def advance(self):

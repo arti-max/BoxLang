@@ -16,6 +16,7 @@ class Parser:
         self.function_args = {}  # имя функции -> список аргументов
         self.imported_files = set()  # множество импортированных файлов
         self.lib_vars = {}  # имя -> путь к файлу
+        self.var_types = {}  # имя -> тип переменной (char, num16, num24)
         self.file_to_parse = ftp
         self.is_boot = False
     
@@ -191,6 +192,8 @@ class Parser:
                 self.parse_variable("lib")
             elif self.current_token.type == TokenType.GASM:
                 self.parse_gasm()
+            elif self.current_token.type == TokenType.IF:
+                self.parse_if()
             else:
                 self.error(f"Unexpected token {self.current_token.type}")
     
@@ -302,6 +305,8 @@ class Parser:
                 self.parse_goto()
             elif self.current_token.type == TokenType.JUMP:
                 self.parse_jump()
+            elif self.current_token.type == TokenType.IF:
+                self.parse_if()
             elif self.current_token.type == TokenType.HASH:
                 # Локальная метка
                 self.eat(TokenType.HASH)
@@ -364,7 +369,7 @@ class Parser:
                     # Очищаем стек от аргументов
                     if args:
                         self.ctx.add_asm(f"  mov %gi %sp")
-                        self.ctx.add_asm(f"  add %gi {len(args) * 3}")
+                        self.ctx.add_asm(f"  add %gi {len(args) * 3 + 3}")
                         self.ctx.add_asm(f"  mov %sp %gi")
                 else:
                     self.error(f"Unexpected identifier in function body: {lib_var}")
@@ -393,6 +398,10 @@ class Parser:
             self.error("Expected variable name")
         name = self.current_token.value
         self.eat(TokenType.IDENT)
+        
+        # Сохраняем тип переменной
+        if var_type != "lib":
+            self.var_types[name] = var_type
         
         self.eat(TokenType.COLON)
         
@@ -561,6 +570,7 @@ class Parser:
                 if self.current_token.type == TokenType.COMMA:
                     self.eat(TokenType.COMMA)
             self.eat(TokenType.CURLY_CLOSE)
+            values.append("$00")
             self.ctx.add_variable(name, " ".join(values))
         elif var_type == "num16":
             # Числовое значение
@@ -574,7 +584,7 @@ class Parser:
             # Разбиваем на старший и младший байты
             byte_high = (num_value >> 8) & 0xFF
             byte_low = num_value & 0xFF
-            value = f"${byte_high:02X} ${byte_low:02X}"
+            value = f"${byte_low:02X} ${byte_high:02X}"
             self.ctx.add_variable(name, value)
         elif var_type == "num24":
             # Числовое значение
@@ -588,7 +598,7 @@ class Parser:
             byte_high = (num_value >> 16) & 0xFF
             byte_mid = (num_value >> 8) & 0xFF
             byte_low = num_value & 0xFF
-            value = f"${byte_high:02X} ${byte_mid:02X} ${byte_low:02X}"
+            value = f"${byte_low:02X} ${byte_mid:02X} ${byte_high:02X}"
             self.ctx.add_variable(name, value)
     
     def parse_gasm(self):
@@ -668,7 +678,7 @@ class Parser:
         # Очищаем стек от аргументов
         if args:
             self.ctx.add_asm(f"  mov %gi %sp")
-            self.ctx.add_asm(f"  add %gi {len(args) * 2}")
+            self.ctx.add_asm(f"  add %gi {len(args) * 3}")
             self.ctx.add_asm(f"  mov %sp %gi")
     
     def parse_loop(self):
@@ -745,7 +755,7 @@ class Parser:
         # Генерируем код проверки и перехода
         self.ctx.add_asm(f"  mov %gi {var}")
         self.ctx.add_asm(f"  cmp *%gi {value}")
-        self.ctx.add_asm(f"  jme .{label}")
+        self.ctx.add_asm(f"  je .{label}")
 
 
     def parse_jump(self):
@@ -761,4 +771,89 @@ class Parser:
         self.eat(TokenType.BRACKET_CLOSE)
         
         self.ctx.add_asm(f"   jmp .{label}")
+
+
+    def parse_if(self):
+        """Парсит конструкцию if"""
+        self.eat(TokenType.IF)
+        self.eat(TokenType.BRACKET_OPEN)
+        
+        # Читаем переменную для сравнения
+        if self.current_token.type != TokenType.IDENT:
+            self.error("Expected variable name in if condition")
+        var = self.current_token.value
+        self.eat(TokenType.IDENT)
+        
+        # Читаем оператор сравнения (пока поддерживаем только ==)
+        if self.current_token.type != TokenType.EQ:
+            self.error("Expected == in if condition")
+        self.eat(TokenType.EQ)
+        self.eat(TokenType.EQ)
+        
+        # Читаем значение для сравнения
+        if self.current_token.type == TokenType.INT:
+            # Числовое значение
+            value = f"$000{self.current_token.value:03X}"  # 24-битное значение
+            self.eat(TokenType.INT)
+        elif self.current_token.type == TokenType.HEX:
+            # Шестнадцатеричное значение
+            value = self.current_token.value
+            self.eat(TokenType.HEX)
+        else:
+            self.error("Expected number or hex value for comparison")
+        
+        self.eat(TokenType.BRACKET_CLOSE)
+        
+        # Увеличиваем счетчик if-блоков
+        if not hasattr(self, 'if_counter'):
+            self.if_counter = 0
+        self.if_counter += 1
+        
+        # Генерируем код проверки и перехода
+        self.ctx.add_asm(f"  mov %si {var}")
+        
+        # Выбираем правильную команду загрузки в зависимости от типа переменной
+        var_type = self.var_types.get(var)
+        if var_type == "char":
+            self.ctx.add_asm(f"  lodb %si %gi")
+        elif var_type == "num16":
+            self.ctx.add_asm(f"  lodw %si %gi")
+        else:  # num24 или неизвестный тип
+            self.ctx.add_asm(f"  lodh %si %gi")
+            
+        self.ctx.add_asm(f"  cmp %gi {value}")
+        self.ctx.add_asm(f"  jne .END_{self.if_counter}")
+        self.ctx.add_asm(f".IF_{self.if_counter}:")
+        
+        self.eat(TokenType.PAREN_OPEN)
+        # Парсим тело if-блока
+        while self.current_token.type != TokenType.PAREN_CLOSE:
+            if self.current_token.type == TokenType.CHAR:
+                self.parse_variable("char")
+            elif self.current_token.type == TokenType.NUM16:
+                self.parse_variable("num16")
+            elif self.current_token.type == TokenType.LIB:
+                self.parse_variable("lib")
+            elif self.current_token.type == TokenType.GASM:
+                self.parse_gasm()
+            elif self.current_token.type == TokenType.OPEN:
+                self.parse_open()
+            elif self.current_token.type == TokenType.LOOP:
+                self.parse_loop()
+            elif self.current_token.type == TokenType.GOTO:
+                self.parse_goto()
+            elif self.current_token.type == TokenType.JUMP:
+                self.parse_jump()
+            elif self.current_token.type == TokenType.IF:
+                self.parse_if()
+            else:
+                self.error(f"Unexpected token in if body: {self.current_token.type}")
+        
+        self.eat(TokenType.PAREN_CLOSE)
+        
+        # Добавляем метку конца if-блока
+        self.ctx.add_asm(f".END_{self.if_counter}:")
+    
+
+
 

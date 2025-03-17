@@ -1,7 +1,7 @@
 ; reserve 4k for kernel or other programm at 00 on disk
 num16 void_fill : ?4096
-lib disk : incl <disk>
-lib io : incl <io>
+lib disk : incl <disk24>
+lib io : incl <io24>
 
 char boot_text: {'G' 'A' 'B' 'o' 'o' 't' ' ' 'v' '0' '.' '1' '$'}
 

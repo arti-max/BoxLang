@@ -1,16 +1,31 @@
-@incl <io>
+@incl <io24>
+@incl <audio>
 
 char msg : {'H' 'e 'l' 'l' 'o' '$'}
+char msg2 : {'I' 'F' '$'}
+char ext : {'h' 'e' 'l' 'p'}
 num16 test1 : 1234
 num24 test2 : 123456
 
-box start[] (
+
+char buffer : ?64
+
+num16 cmp_res : ?1
+
+lib datautils : incl <datautils24>
+
+box _start[] (
     open print[msg]
 
+    open beep[800]
+
+
+    open scanstr[buffer]
+    datautils->string_compare[buffer, ext, cmp_res]
+
+    if [cmp_res == 1] (
+        open print[msg2]
+    )
+
     open exit[0]
-)
-
-box test[ax%test1, bx%test2] (
-
-
 )

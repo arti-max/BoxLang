@@ -49,9 +49,9 @@ scanstr:
     pop %dx
     
     cmp %dx $7F ; Backspace check
-    jme .bs
+    je .bs
     cmp %bx $08
-    jme .bs
+    je .bs
     
     ; print
     push %dx
@@ -62,19 +62,19 @@ scanstr:
     add %si %gi
     stob %si %dx
     sub %si %gi
-    inx qptr
+    inx @qptr
     
     ; check enter
     cmp %dx $0A
-    jme .end
+    je .end
     jmp .logic
 
     .bs:
         mov %gi *qptr
         cmp %gi $00
-        jme .logic
+        je .logic
     .bs_strict:
-        dex qptr
+        dex @qptr
         push %si
         mov %si bs_seq
         call puts
@@ -108,17 +108,17 @@ push %bp
     pop %bx
 
     cmp %bx $0A ; Check for Enter
-    jme .end
+    je .end
     cmp %bx $20 ; Check for space
-    jme .end
+    je .end
     cmp %bx $00 ; Check for NUL ($00)
-    jme .end
+    je .end
     cmp %bx $30 ; Check if less than '0'
     jl .loop
     cmp %bx $3A ; Check if greater than '9'+1
     jg .loop
     cmp %bx $7F ; Check for Backspace
-    jme .back
+    je .back
 
     mul %ax 10
     push %bx
@@ -136,3 +136,4 @@ push %bp
     mov %sp %bp
     pop %bp
     ret
+

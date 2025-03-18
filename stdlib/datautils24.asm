@@ -20,7 +20,7 @@ strcpy:
     pop %bx
     ; logic
     .loop:
-        mov %si *%ax
+        lodb %ax %si
         mov %gi %bx
         cmp %si $00
         je .end
@@ -56,7 +56,7 @@ num_to_string_16:
     ; logic
     mov %gi %bx
     add %gi 4
-    mov %ax *%ax
+    lodw %ax %ax
 .loop:
     div %ax 10  ; Divide and get the remainder into DX
     add %dx 48  ; Convert to ASCII
@@ -92,7 +92,7 @@ num_to_string_24:
     ; logic
     mov %gi %bx
     add %gi 7
-    mov %ax *%ax
+    lodh %ax %ax
 .loop:
     div %ax 10  ; Divide and get the remainder into DX
     add %dx 48  ; Convert to ASCII
@@ -136,8 +136,8 @@ memcpy:
     mov %sp %bp
     ; logic
     push %si
-.loop
-    mov %si *%ax
+.loop:
+    lodb %ax %si
     mov %gi %bx
     stob %gi %si
     inx %ax
@@ -148,6 +148,7 @@ memcpy:
     mov %sp %bp
     pop %bp
     ret
+
 ; Compare two sttrings
 ; ax - Str1
 ; bx - Str2
@@ -176,26 +177,15 @@ string_compare:
 
     mov %sp %bp
     ;logic
-    ; mov %dx $00
-    ; storb %dx
     mov %si %ax
-    mov %gi *qptr
-    add %si %gi
-    dex %si
-    mov %dx $00
-    stob %si %dx ; Load $00 (NUL) instead of $0A (Enter)
-    mov %si qptr
-    stob %si %dx
 
 .loop:
-    mov %si *%ax
-    mov %gi *%bx
+    lodb %ax %si
+    lodb %bx %gi
     cmp %si %gi
     jne .fail
     cmp %si $00
     je .eq
-    inx %ax
-    inx %bx
     jmp .loop
 .eq:
     mov %gi %cx
@@ -235,7 +225,7 @@ set_new_data_24:
 
     mov %sp %bp
     ; logic
-    mov %si *%ax
+    lodh %ax %si
     stoh %si %bx
     ;end
     pop %bp
@@ -265,7 +255,7 @@ set_new_data_16:
 
     mov %sp %bp
     ; logic
-    mov %si *%ax
+    lodw %ax %si
     stow %si %bx
     ;end
     pop %bp
@@ -296,7 +286,7 @@ set_new_data_8:
 
     mov %sp %bp
     ; logic
-    mov %si *%ax
+    lodb %ax %si
     stob %si %bx
     ;end
     pop %bp

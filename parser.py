@@ -706,8 +706,16 @@ class Parser:
         self.eat(TokenType.BRACKET_CLOSE)
         
         # Генерируем код проверки и перехода
-        self.ctx.add_asm(f"  mov %gi {var}")
-        self.ctx.add_asm(f"  cmp *%gi $00")
+        self.ctx.add_asm(f"  mov %si {var}")
+        # Выбираем правильную команду загрузки в зависимости от типа переменной
+        var_type = self.var_types.get(var)
+        if var_type == "char":
+            self.ctx.add_asm(f"  lodb %si %gi")
+        elif var_type == "num16":
+            self.ctx.add_asm(f"  lodw %si %gi")
+        else:  # num24 или неизвестный тип
+            self.ctx.add_asm(f"  lodh %si %gi")
+        self.ctx.add_asm(f"  cmp %gi $00")
         self.ctx.add_asm(f"  jg .{label}")
     
     def parse_goto(self):
@@ -753,8 +761,16 @@ class Parser:
         self.eat(TokenType.BRACKET_CLOSE)
         
         # Генерируем код проверки и перехода
-        self.ctx.add_asm(f"  mov %gi {var}")
-        self.ctx.add_asm(f"  cmp *%gi {value}")
+        self.ctx.add_asm(f"  mov %si {var}")
+        # Выбираем правильную команду загрузки в зависимости от типа переменной
+        var_type = self.var_types.get(var)
+        if var_type == "char":
+            self.ctx.add_asm(f"  lodb %si %gi")
+        elif var_type == "num16":
+            self.ctx.add_asm(f"  lodw %si %gi")
+        else:  # num24 или неизвестный тип
+            self.ctx.add_asm(f"  lodh %si %gi")
+        self.ctx.add_asm(f"  cmp %gi {value}")
         self.ctx.add_asm(f"  je .{label}")
 
 

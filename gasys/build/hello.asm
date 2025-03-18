@@ -69,6 +69,8 @@ mov %sp %bp
 pop %bp
 ret
 
+
+
 ; arg1 - %si : buffer
 scanstr:
 push %bp
@@ -86,43 +88,37 @@ pop %dx
 
 cmp %dx $7F ; Backspace check
 je .bs
-cmp %bx $08
-je .bs
 
 ; print
 push %dx
 int $02
 
-; Save to mem
-mov %gi *qptr
-add %si %gi
-stob %si %dx
-sub %si %gi
-inx @qptr
-
 ; check enter
 cmp %dx $0A
 je .end
+stob %si %dx
+inx @qptr
 jmp .logic
 
 .bs:
-mov %gi *qptr
+mov %gi qptr
+lodw %gi %ax
 cmp %gi $00
 je .logic
 .bs_strict:
-dex @qptr
 push %si
 mov %si bs_seq
 call puts
 pop %si
+dex %si
+dex @qptr
 jmp .logic
-
-
 .end:
+mov %ax $00
+stob %si %ax
 mov %sp %bp
 pop %bp
 ret
-
 
 ; scani - Scan an num from standard input
 ; Returns:
@@ -219,7 +215,7 @@ mov %sp %bx
 pop %bx
 ; logic
 .loop:
-mov %si *%ax
+lodb %ax %si
 mov %gi %bx
 cmp %si $00
 je .end
@@ -255,7 +251,7 @@ mov %sp %bp
 ; logic
 mov %gi %bx
 add %gi 4
-mov %ax *%ax
+lodw %ax %ax
 .loop:
 div %ax 10  ; Divide and get the remainder into DX
 add %dx 48  ; Convert to ASCII
@@ -291,7 +287,7 @@ mov %sp %bp
 ; logic
 mov %gi %bx
 add %gi 7
-mov %ax *%ax
+lodh %ax %ax
 .loop:
 div %ax 10  ; Divide and get the remainder into DX
 add %dx 48  ; Convert to ASCII
@@ -335,8 +331,8 @@ pop %cx
 mov %sp %bp
 ; logic
 push %si
-.loop
-mov %si *%ax
+.loop:
+lodb %ax %si
 mov %gi %bx
 stob %gi %si
 inx %ax
@@ -347,6 +343,7 @@ pop %si
 mov %sp %bp
 pop %bp
 ret
+
 ; Compare two sttrings
 ; ax - Str1
 ; bx - Str2
@@ -375,26 +372,15 @@ pop %cx
 
 mov %sp %bp
 ;logic
-; mov %dx $00
-; storb %dx
 mov %si %ax
-mov %gi *qptr
-add %si %gi
-dex %si
-mov %dx $00
-stob %si %dx ; Load $00 (NUL) instead of $0A (Enter)
-mov %si qptr
-stob %si %dx
 
 .loop:
-mov %si *%ax
-mov %gi *%bx
+lodb %ax %si
+lodb %bx %gi
 cmp %si %gi
 jne .fail
 cmp %si $00
 je .eq
-inx %ax
-inx %bx
 jmp .loop
 .eq:
 mov %gi %cx
@@ -434,7 +420,7 @@ pop %bx
 
 mov %sp %bp
 ; logic
-mov %si *%ax
+lodh %ax %si
 stoh %si %bx
 ;end
 pop %bp
@@ -464,7 +450,7 @@ pop %bx
 
 mov %sp %bp
 ; logic
-mov %si *%ax
+lodw %ax %si
 stow %si %bx
 ;end
 pop %bp
@@ -495,7 +481,7 @@ pop %bx
 
 mov %sp %bp
 ; logic
-mov %si *%ax
+lodb %ax %si
 stob %si %bx
 ;end
 pop %bp
@@ -532,7 +518,7 @@ _start:
   add %gi 12
   mov %sp %gi
   mov %si cmp_res
-  lodw %si %gi
+  lodh %si %gi
   cmp %gi $000001
   jne .END_1
 .IF_1:

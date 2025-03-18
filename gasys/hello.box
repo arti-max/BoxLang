@@ -10,7 +10,7 @@ num24 test2 : 123456
 
 char buffer : ?64
 
-num16 cmp_res : ?1
+num24 cmp_res : ?1
 
 lib datautils : incl <datautils24>
 

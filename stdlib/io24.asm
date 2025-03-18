@@ -33,6 +33,8 @@ input:
     pop %bp
     ret
 
+
+
 ; arg1 - %si : buffer
 scanstr:
     push %bp
@@ -44,49 +46,43 @@ scanstr:
     pop %si
     mov %sp %bp
     ; logic
-    .logic:
+.logic:
     int $01
     pop %dx
     
     cmp %dx $7F ; Backspace check
-    je .bs
-    cmp %bx $08
     je .bs
     
     ; print
     push %dx
     int $02
     
-    ; Save to mem
-    mov %gi *qptr
-    add %si %gi
-    stob %si %dx
-    sub %si %gi
-    inx @qptr
-    
     ; check enter
     cmp %dx $0A
     je .end
+    stob %si %dx
+    inx @qptr
     jmp .logic
 
-    .bs:
-        mov %gi *qptr
-        cmp %gi $00
-        je .logic
-    .bs_strict:
-        dex @qptr
-        push %si
-        mov %si bs_seq
-        call puts
-        pop %si
-        jmp .logic
-        
-    
-    .end:
+.bs:
+    mov %gi qptr
+    lodw %gi %ax
+    cmp %gi $00
+    je .logic
+.bs_strict:
+    push %si
+    mov %si bs_seq
+    call puts
+    pop %si
+    dex %si
+    dex @qptr
+    jmp .logic  
+.end:
+    mov %ax $00
+    stob %si %ax
     mov %sp %bp
     pop %bp
     ret
-    
 
 ; scani - Scan an num from standard input
 ; Returns:

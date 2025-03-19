@@ -1,16 +1,11 @@
 jmp _start
 
-msg: bytes $48 $65 $6C $6C $6F $0A $00
-msg2: bytes $49 $46 $0A $00
-ext: bytes $68 $65 $6C $70 $00
-test1: bytes $D2 $04
-test2: bytes $40 $E2 $01
-buffer: reserve 64 bytes
-cmp_res: reserve 1 bytes
-__str1: bytes $45 $6E $74 $65 $72 $20 $43 $6F $6D $6D $61 $6E $64 $3A $20 $0A $00
-__str2: bytes $68 $65 $6C $70 $00
-__str3: bytes $68 $65 $6C $70 $20 $69 $73 $20 $69 $74 $21 $21 $21 $0A $00
-__str4: bytes $68 $61 $69 $69 $00
+IBUF: reserve 16 bytes
+CMP_RES: reserve 1 bytes
+__str1: bytes $46 $4C $20 $53 $74 $75 $64 $69 $6F $21 $0A $00
+__str2: bytes $61 $00
+__str3: bytes $62 $00
+__str4: bytes $71 $00
 
 ; Standard library (def.asm)
 ; РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏ Р±РёР±Р»РёРѕС‚РµРєР°
@@ -180,7 +175,7 @@ ret
 
 ; Standard Beep
 ; ax - tone
-beep:
+audio_beep:
 push %bp
 mov %bp %sp
 ; arg 1 - tone
@@ -493,100 +488,96 @@ ret
 
 
 ; Main code
-test:
-  push %bp
-  mov %bp %sp
-  mov %ax %bp
-  add %ax $6
-  mov %sp %ax
-  pop %ax
-  mov %sp %bp
-  mov %bx %bp
-  add %bx $9
-  mov %sp %bx
-  pop %bx
-  mov %sp %bp
-  mov %cx %bp
-  add %cx $C
-  mov %sp %cx
-  pop %cx
-  mov %sp %bp
-  mov %dx %bp
-  add %dx $F
-  mov %sp %dx
-  pop %dx
-  mov %sp %bp
-  mov %si %bp
-  add %si $12
-  mov %sp %si
-  pop %si
-  mov %sp %bp
-  push %ax
-  call print
-  mov %gi %sp
-  add %gi 3
-  mov %sp %gi
-  mov %sp %bp
-  pop %bp
-  ret
-
 _start:
-  mov %gi msg
-  push %gi
-  call print
-  mov %gi %sp
-  add %gi 3
-  mov %sp %gi
-  push 800
-  call beep
-  mov %gi %sp
-  add %gi 3
-  mov %sp %gi
   mov %gi __str1
   push %gi
   call print
   mov %gi %sp
   add %gi 3
   mov %sp %gi
-  mov %gi buffer
+.label1:
+  mov %gi IBUF
   push %gi
-  call scanstr
+  call input
   mov %gi %sp
   add %gi 3
   mov %sp %gi
-  mov %gi cmp_res
+  mov %gi CMP_RES
   push %gi
   mov %gi __str2
   push %gi
-  mov %gi buffer
+  mov %gi IBUF
   push %gi
   call datautils_string_compare
   mov %gi %sp
   add %gi 12
   mov %sp %gi
-  mov %si cmp_res
+  mov %si CMP_RES
   lodb %si %gi
   cmp %gi $000001
   jne .END_1
 .IF_1:
-  mov %gi __str3
-  push %gi
-  call print
+  push 100
+  call audio_beep
   mov %gi %sp
-  add %gi 3
+  add %gi 6
   mov %sp %gi
 .END_1:
-  mov %gi __str4
+  mov %gi IBUF
   push %gi
-  call test
+  call input
   mov %gi %sp
   add %gi 3
   mov %sp %gi
+  mov %gi CMP_RES
+  push %gi
+  mov %gi __str3
+  push %gi
+  mov %gi IBUF
+  push %gi
+  call datautils_string_compare
+  mov %gi %sp
+  add %gi 12
+  mov %sp %gi
+  mov %si CMP_RES
+  lodb %si %gi
+  cmp %gi $000001
+  jne .END_2
+.IF_2:
+  push 200
+  call audio_beep
+  mov %gi %sp
+  add %gi 6
+  mov %sp %gi
+.END_2:
+  mov %gi IBUF
+  push %gi
+  call input
+  mov %gi %sp
+  add %gi 3
+  mov %sp %gi
+  mov %gi CMP_RES
+  push %gi
+  mov %gi __str4
+  push %gi
+  mov %gi IBUF
+  push %gi
+  call datautils_string_compare
+  mov %gi %sp
+  add %gi 12
+  mov %sp %gi
+  mov %si CMP_RES
+  lodb %si %gi
+  cmp %gi $000001
+  jne .END_3
+.IF_3:
   push 0
   call exit
   mov %gi %sp
   add %gi 3
   mov %sp %gi
+.END_3:
+   jmp .label1
   mov %sp %bp
   pop %bp
   ret

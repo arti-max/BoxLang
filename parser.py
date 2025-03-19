@@ -4,8 +4,8 @@ from lexer import Lexer, Token, TokenType
 
 @dataclass
 class FunctionArg:
-    register: str
-    arg_name: str
+    name: str
+    reg: Optional[str] = None  # Теперь регистр опционален
 
 class Parser:
     def __init__(self, lexer: Lexer, ctx, ftp):
@@ -19,6 +19,7 @@ class Parser:
         self.var_types = {}  # имя -> тип переменной (char, num16, num24)
         self.file_to_parse = ftp
         self.is_boot = False
+        self.available_regs = ['ax', 'bx', 'cx', 'dx', 'si']  # Доступные регистры для аргументов
     
     def error(self, message: str):
         raise SyntaxError(f"{message} at line {self.current_token.line}, column {self.current_token.column} in file {self.file_to_parse}")
@@ -52,8 +53,8 @@ class Parser:
                 self.parse_variable("num24")
             elif self.current_token.type == TokenType.LIB:
                 self.parse_variable("lib")
-            elif self.current_token.type == TokenType.GASM:
-                self.parse_gasm()
+            elif self.current_token.type == TokenType.KASM:
+                self.parse_kasm()
             else:
                 self.error(f"Unexpected token {self.current_token.type}")
         
@@ -190,8 +191,8 @@ class Parser:
                 self.parse_variable("num24")
             elif self.current_token.type == TokenType.LIB:
                 self.parse_variable("lib")
-            elif self.current_token.type == TokenType.GASM:
-                self.parse_gasm()
+            elif self.current_token.type == TokenType.KASM:
+                self.parse_kasm()
             elif self.current_token.type == TokenType.IF:
                 self.parse_if()
             else:
@@ -216,53 +217,24 @@ class Parser:
         
         # Аргументы функции
         args = []
-        reg_map = {}  # Словарь для маппинга имен на регистры
-        
         if self.current_token.type == TokenType.BRACKET_OPEN:
             self.eat(TokenType.BRACKET_OPEN)
-            while self.current_token.type in {TokenType.REGISTER, TokenType.INT, TokenType.HEX}:
-                if self.current_token.type == TokenType.REGISTER:
-                    # Читаем регистр
-                    reg = self.current_token.value
-                    if reg not in ['ax', 'bx', 'cx', 'dx', 'si']:
-                        self.error("Expected register name (ax, bx, cx, dx, si)")
-                    self.eat(TokenType.REGISTER)
-                    
-                    if self.current_token.type != TokenType.PERCENT:
-                        self.error("Expected % after register")
-                    self.eat(TokenType.PERCENT)
-                    
-                    # Читаем имя аргумента
-                    if self.current_token.type != TokenType.IDENT:
-                        self.error("Expected argument name after %")
-                    arg_name = self.current_token.value
-                    self.eat(TokenType.IDENT)
-                    
-                    # Сохраняем маппинг имени на регистр
-                    reg_map[arg_name] = reg
-                    args.append(FunctionArg(reg, arg_name))
-                elif self.current_token.type == TokenType.INT:
-                    args.append(str(self.current_token.value))
-                    self.eat(TokenType.INT)
-                elif self.current_token.type == TokenType.HEX:
-                    args.append(str(int(self.current_token.value[1:], 16)))
-                    self.eat(TokenType.HEX)
+            while self.current_token.type == TokenType.IDENT:
+                # Теперь просто читаем имя аргумента
+                arg_name = self.current_token.value
+                self.eat(TokenType.IDENT)
+                args.append(FunctionArg(name=arg_name))
                 
-                # Проверяем наличие запятой
                 if self.current_token.type == TokenType.COMMA:
                     self.eat(TokenType.COMMA)
-                    # Если после запятой сразу идет закрывающая скобка, это ошибка
-                    if self.current_token.type == TokenType.BRACKET_CLOSE:
-                        self.error("Unexpected comma after last argument")
                 elif self.current_token.type != TokenType.BRACKET_CLOSE:
                     self.error("Expected comma between arguments or closing bracket")
             
             self.eat(TokenType.BRACKET_CLOSE)
         
-        # Сохраняем аргументы функции и маппинг регистров
+        # Сохраняем аргументы функции
         if args:
             self.function_args[name] = args
-            self.current_reg_map = reg_map
         
         # Начинаем функцию
         self.ctx.start_function(name)
@@ -273,21 +245,35 @@ class Parser:
             self.ctx.add_asm("  push %bp")
             self.ctx.add_asm("  mov %bp %sp")
             
-            # Загружаем аргументы
+            # Распределяем регистры для аргументов
+            available_regs = self.available_regs.copy()
             for i, arg in enumerate(args):
-                if isinstance(arg, FunctionArg):
-                    # Загружаем значение из стека в регистр
-                    # +6 для пропуска сохраненного bp и адреса возврата
-                    # +3 для каждого следующего аргумента
-                    offset = 6 + i * 3
-                    self.ctx.add_asm(f"  mov %{arg.register} %bp")
-                    self.ctx.add_asm(f"  add %{arg.register} {offset}")
-                    self.ctx.add_asm(f"  mov %sp %{arg.register}")
-                    self.ctx.add_asm(f"  pop %{arg.register}")
-                    self.ctx.add_asm(f"  mov %sp %bp")
+                if available_regs:
+                    reg = available_regs.pop(0)
+                    arg.reg = reg
+                    
+                    # Создаем последовательность команд для загрузки значения
+                    # Сначала получаем адрес аргумента в стеке
+                    self.ctx.add_asm(f"  mov %{reg} %bp")  # Копируем bp в регистр
+                    
+                    # Теперь нам нужно добавить смещение. Так как у нас нет команды add с константой,
+                    # мы будем использовать временный регистр gi
+                    offset = 6 + i * 3  # Первый аргумент на 6, каждый следующий +3
+                    
+                    # Добавляем смещение к регистру
+                    self.ctx.add_asm(f"  add %{reg} ${offset:X}")
+                    
+                    # Теперь у нас в регистре адрес аргумента, загружаем значение
+                    self.ctx.add_asm(f"  mov %sp %{reg}")  # Перемещаем sp на адрес аргумента
+                    self.ctx.add_asm(f"  pop %{reg}")     # Читаем значение в регистр
+                    self.ctx.add_asm(f"  mov %sp %bp")    # Восстанавливаем sp
         
         # Тело функции
         self.eat(TokenType.PAREN_OPEN)
+        
+        # Сохраняем маппинг аргументов для использования в kasm
+        self.current_reg_map = {arg.name: arg.reg for arg in args if arg.reg}
+        
         while self.current_token.type != TokenType.PAREN_CLOSE:
             if self.current_token.type == TokenType.CHAR:
                 self.parse_variable("char")
@@ -295,8 +281,8 @@ class Parser:
                 self.parse_variable("num16")
             elif self.current_token.type == TokenType.LIB:
                 self.parse_variable("lib")
-            elif self.current_token.type == TokenType.GASM:
-                self.parse_gasm()
+            elif self.current_token.type == TokenType.KASM:
+                self.parse_kasm()
             elif self.current_token.type == TokenType.OPEN:
                 self.parse_open()
             elif self.current_token.type == TokenType.LOOP:
@@ -337,7 +323,7 @@ class Parser:
                     args = []
                     if self.current_token.type == TokenType.BRACKET_OPEN:
                         self.eat(TokenType.BRACKET_OPEN)
-                        while self.current_token.type in {TokenType.IDENT, TokenType.INT, TokenType.HEX}:
+                        while self.current_token.type in {TokenType.IDENT, TokenType.INT, TokenType.HEX, TokenType.STRING}:
                             if self.current_token.type == TokenType.INT:
                                 # Числовой аргумент
                                 args.append(str(self.current_token.value))
@@ -346,6 +332,13 @@ class Parser:
                                 # Шестнадцатеричный аргумент
                                 args.append(str(int(self.current_token.value[1:], 16)))
                                 self.eat(TokenType.HEX)
+                            elif self.current_token.type == TokenType.STRING:
+                                # Строковый литерал
+                                value = self.current_token.value
+                                self.eat(TokenType.STRING)
+                                # Добавляем строковый литерал и получаем его метку
+                                label = self.ctx.add_string_literal(value)
+                                args.append(label)
                             else:
                                 args.append(self.current_token.value)
                                 self.eat(TokenType.IDENT)
@@ -517,6 +510,13 @@ class Parser:
                 self.error("Expected size after ?")
             size = self.current_token.value
             self.eat(TokenType.INT)
+            if (var_type == "char"):
+                pass
+            elif (var_type == "num16"):
+                size = size*2
+            elif (var_type == "num24"):
+                size = size*3
+
             self.ctx.reserve(name, size, "byte")
         elif var_type == "char" and self.current_token.type == TokenType.ARRAY:
             # Массив символов через Array
@@ -601,12 +601,12 @@ class Parser:
             value = f"${byte_low:02X} ${byte_mid:02X} ${byte_high:02X}"
             self.ctx.add_variable(name, value)
     
-    def parse_gasm(self):
+    def parse_kasm(self):
         """Парсит ассемблерную вставку"""
-        self.eat(TokenType.GASM)
+        self.eat(TokenType.KASM)
         self.eat(TokenType.BRACKET_OPEN)
         if self.current_token.type != TokenType.STRING:
-            self.error("Expected string in gasm[]")
+            self.error("Expected string in kasm[]")
         
         # Заменяем имена аргументов на регистры
         code = self.current_token.value
@@ -646,7 +646,8 @@ class Parser:
         args = []
         if self.current_token.type == TokenType.BRACKET_OPEN:
             self.eat(TokenType.BRACKET_OPEN)
-            while self.current_token.type in {TokenType.IDENT, TokenType.INT, TokenType.HEX}:
+            while self.current_token.type in {TokenType.IDENT, TokenType.INT, TokenType.HEX, TokenType.STRING}:
+                print(self.current_token.type)
                 if self.current_token.type == TokenType.INT:
                     # Числовой аргумент
                     args.append(str(self.current_token.value))
@@ -655,9 +656,25 @@ class Parser:
                     # Шестнадцатеричный аргумент
                     args.append(str(int(self.current_token.value[1:], 16)))
                     self.eat(TokenType.HEX)
+                elif self.current_token.type == TokenType.STRING:
+                    # Строковый литерал
+                    value = self.current_token.value
+                    self.eat(TokenType.STRING)
+                    # Добавляем строковый литерал и получаем его метку
+                    label = self.ctx.add_string_literal(value)
+                    args.append(label)
                 else:
-                    args.append(self.current_token.value)
+                    # Проверяем, является ли идентификатор параметром функции
+                    arg_name = self.current_token.value
                     self.eat(TokenType.IDENT)
+                    
+                    # Если у нас есть маппинг регистров и аргумент в нем есть
+                    if hasattr(self, 'current_reg_map') and arg_name in self.current_reg_map:
+                        # Используем регистр вместо имени аргумента
+                        args.append(f"%{self.current_reg_map[arg_name]}")
+                    else:
+                        # Иначе используем имя переменной как есть
+                        args.append(arg_name)
                 
                 if self.current_token.type == TokenType.COMMA:
                     self.eat(TokenType.COMMA)
@@ -669,8 +686,11 @@ class Parser:
             if arg.isdigit():
                 # Числовой аргумент
                 self.ctx.add_asm(f"  push {arg}")
+            elif arg.startswith("%"):
+                # Это регистр (параметр функции)
+                self.ctx.add_asm(f"  push {arg}")
             else:
-                # Переменная
+                # Переменная или метка строкового литерала
                 self.ctx.add_asm(f"  mov %gi {arg}")
                 self.ctx.add_asm(f"  push %gi")
         
@@ -850,8 +870,8 @@ class Parser:
                 self.parse_variable("num16")
             elif self.current_token.type == TokenType.LIB:
                 self.parse_variable("lib")
-            elif self.current_token.type == TokenType.GASM:
-                self.parse_gasm()
+            elif self.current_token.type == TokenType.KASM:
+                self.parse_kasm()
             elif self.current_token.type == TokenType.OPEN:
                 self.parse_open()
             elif self.current_token.type == TokenType.LOOP:
@@ -862,6 +882,67 @@ class Parser:
                 self.parse_jump()
             elif self.current_token.type == TokenType.IF:
                 self.parse_if()
+            elif self.current_token.type == TokenType.IDENT:
+                # Проверяем, является ли это вызовом через lib
+                lib_var = self.current_token.value
+                self.eat(TokenType.IDENT)
+                
+                if self.current_token.type == TokenType.ARROW:
+                    # Это вызов через lib
+                    self.eat(TokenType.ARROW)
+                    
+                    if self.current_token.type != TokenType.IDENT:
+                        self.error("Expected function name after ->")
+                    func_name = self.current_token.value
+                    self.eat(TokenType.IDENT)
+                    
+                    # Аргументы вызова
+                    args = []
+                    if self.current_token.type == TokenType.BRACKET_OPEN:
+                        self.eat(TokenType.BRACKET_OPEN)
+                        while self.current_token.type in {TokenType.IDENT, TokenType.INT, TokenType.HEX, TokenType.STRING}:
+                            if self.current_token.type == TokenType.INT:
+                                # Числовой аргумент
+                                args.append(str(self.current_token.value))
+                                self.eat(TokenType.INT)
+                            elif self.current_token.type == TokenType.HEX:
+                                # Шестнадцатеричный аргумент
+                                args.append(str(int(self.current_token.value[1:], 16)))
+                                self.eat(TokenType.HEX)
+                            elif self.current_token.type == TokenType.STRING:
+                                # Строковый литерал
+                                value = self.current_token.value
+                                self.eat(TokenType.STRING)
+                                # Добавляем строковый литерал и получаем его метку
+                                label = self.ctx.add_string_literal(value)
+                                args.append(label)
+                            else:
+                                args.append(self.current_token.value)
+                                self.eat(TokenType.IDENT)
+                            
+                            if self.current_token.type == TokenType.COMMA:
+                                self.eat(TokenType.COMMA)
+                        self.eat(TokenType.BRACKET_CLOSE)
+                    
+                    # Генерируем код вызова
+                    # Передаем аргументы через стек
+                    for arg in reversed(args):  # Аргументы помещаются в стек в обратном порядке
+                        if arg.isdigit():
+                            # Числовой аргумент
+                            self.ctx.add_asm(f"  push {arg}")
+                        else:
+                            # Переменная
+                            self.ctx.add_asm(f"  mov %gi {arg}")
+                            self.ctx.add_asm(f"  push %gi")
+                    
+                    self.ctx.add_asm(f"  call {lib_var}_{func_name}")
+                    # Очищаем стек от аргументов
+                    if args:
+                        self.ctx.add_asm(f"  mov %gi %sp")
+                        self.ctx.add_asm(f"  add %gi {len(args) * 3 + 3}")
+                        self.ctx.add_asm(f"  mov %sp %gi")
+                else:
+                    self.error(f"Unexpected identifier in function body: {lib_var}")
             else:
                 self.error(f"Unexpected token in if body: {self.current_token.type}")
         

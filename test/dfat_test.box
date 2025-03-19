@@ -1,0 +1,44 @@
+@incl <io>
+@incl <dfat>
+
+; Буферы для работы с файлами
+char file_buffer: ?1024    ; Буфер для чтения файлов
+char files_buffer: ?1024   ; Буфер для списка файлов
+char disk_addr: ?3         ; Адрес образа диска в памяти
+
+box start[] (
+    ; Загружаем образ диска
+    open load_disk["disk.img", disk_addr]
+    
+    ; Проверяем сигнатуру
+    open check_signature[disk_addr]
+    goto[#valid_fs, COMPARE_RESULT, 1]
+    
+    ; Если сигнатура неверна
+    open print["Invalid filesystem!$"]
+    open exit[1]
+    
+    #valid_fs
+    ; Получаем список файлов
+    open list_files[disk_addr, files_buffer, 1024]
+    
+    ; Выводим список файлов
+    open print["Files on disk:$"]
+    mov %si files_buffer
+    
+    #print_files
+    ; Проверяем флаг файла
+    add %si $15
+    lodb %si %gi
+    cmp %gi $00
+    je #done
+    
+    ; Выводим имя файла
+    sub %si $15
+    open print_filename[%si]
+    add %si $16
+    jump[#print_files]
+    
+    #done
+    open exit[0]
+) 

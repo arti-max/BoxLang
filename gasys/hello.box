@@ -7,10 +7,9 @@ char ext : {'h' 'e' 'l' 'p'}
 num16 test1 : 1234
 num24 test2 : 123456
 
-
 char buffer : ?64
 
-num24 cmp_res : ?1
+char cmp_res : ?1
 
 lib datautils : incl <datautils24>
 
@@ -20,12 +19,19 @@ box _start[] (
     open beep[800]
 
 
+    open print["Enter Command: \n"]
     open scanstr[buffer]
-    datautils->string_compare[buffer, ext, cmp_res]
+    datautils->string_compare[buffer, "help", cmp_res]
 
     if [cmp_res == 1] (
-        open print[msg2]
+        open print["help is it!!!\n"]
     )
 
+    open test["haii"]
+
     open exit[0]
+)
+
+box test[str, str2, str3, str4, str5, str6, str7, str8, syt9] (
+    open print[str]
 )

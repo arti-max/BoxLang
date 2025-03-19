@@ -9,7 +9,7 @@ class TokenType(Enum):
     NUM24 = auto()    # num24
     CHAR = auto()     # char
     LIB = auto()      # lib
-    GASM = auto()     # gasm
+    KASM = auto()     # kasm
     RESERVE = auto()  # ?
     ARRAY = auto()    # Array
     LOOP = auto()     # loop
@@ -37,6 +37,7 @@ class TokenType(Enum):
     EQ = auto()
     
     STRING = auto()       # "text"
+    STRING_LIT = auto()   # "text" в аргументах
     CHAR_LIT = auto()    # 'c'
     INT = auto()         # 123
     HEX = auto()         # $FF
@@ -68,7 +69,7 @@ class Lexer:
             'num24': TokenType.NUM24,
             'char': TokenType.CHAR,
             'lib': TokenType.LIB,
-            'gasm': TokenType.GASM,
+            'kasm': TokenType.KASM,
             'Array': TokenType.ARRAY,
             'loop': TokenType.LOOP,
             'goto': TokenType.GOTO,

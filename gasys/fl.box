@@ -1,0 +1,33 @@
+@incl <io24>
+
+lib audio : incl <audio>
+lib datautils : incl <datautils24>
+
+char IBUF : ?16
+char CMP_RES : ?1
+
+box _start[] (
+    open print["FL Studio!\n"]
+    #label1
+
+    open input[IBUF]
+    datautils->string_compare[IBUF, "a", CMP_RES]
+    if [CMP_RES == 1] (
+        audio->beep[100]
+    )
+
+    open input[IBUF]
+    datautils->string_compare[IBUF, "b", CMP_RES]
+    if [CMP_RES == 1] (
+        audio->beep[200]
+    )
+
+    open input[IBUF]
+    datautils->string_compare[IBUF, "q", CMP_RES]
+    if [CMP_RES == 1] (
+        open exit[0]
+    )
+
+    jump[#label1]
+
+)

@@ -154,9 +154,9 @@ memcpy:
 ; bx - Str2
 ; cx - result (0 or 1)
 string_compare:
-    ; arg1 - Str1   ; bp+4
-    ; arg2 - Str2   ; bp+6
-    ; arg3 - result ; bp+8
+    ; arg1 - Str1   ; bp+6
+    ; arg2 - Str2   ; bp+9
+    ; arg3 - result ; bp+12
     push %bp
     mov %bp %sp
     ;arg1
@@ -171,7 +171,7 @@ string_compare:
     pop %bx
     ;arg3
     mov %cx %bp
-    add %cx 8
+    add %cx 12
     mov %sp %cx
     pop %cx
 

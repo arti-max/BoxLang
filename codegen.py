@@ -5,6 +5,8 @@ class CodegenContext:
         self.current_function = None
         self.imported_code = []  # код из импортированных файлов
         self.is_boot = False
+        self.string_literals = {}  # словарь для хранения строковых литералов
+        self.string_counter = 0    # счетчик для генерации уникальных меток
         
         # Загружаем стандартную библиотеку
         with open("stdlib/def.asm") as f:
@@ -40,6 +42,26 @@ class CodegenContext:
     def add_imported_code(self, code: str):
         """Добавляет код из импортированного файла"""
         self.imported_code.append(code)
+    
+    def add_string_literal(self, value: str) -> str:
+        """Добавляет строковый литерал и возвращает его метку"""
+        # Если строка уже существует, возвращаем её метку
+        if value in self.string_literals:
+            return self.string_literals[value]
+        
+        # Генерируем новую метку
+        self.string_counter += 1
+        label = f"__str{self.string_counter}"
+        
+        # Преобразуем строку в последовательность байтов
+        bytes_str = " ".join(f"${ord(c):02X}" for c in value)
+        bytes_str += " $00"  # добавляем нулевой байт в конец
+        
+        # Сохраняем строку и её метку
+        self.string_literals[value] = label
+        self.variables[label] = f"{bytes_str}"
+        
+        return label
     
     def generate(self) -> str:
         """Генерирует финальный ассемблерный код"""
